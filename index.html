@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>sm1 — talk to someone</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0a0a0a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    .app {
+      background: #111;
+      border: 0.5px solid #1c1c1c;
+      border-radius: 24px;
+      width: 100%;
+      max-width: 420px;
+      min-height: 600px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .screen { display: none; flex-direction: column; flex: 1; }
+    .screen.active { display: flex; }
+
+    /* AGE GATE */
+    .age-gate {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; padding: 48px 32px;
+    }
+    .logo-big { font-size: 36px; font-weight: 500; color: #eee; letter-spacing: -1px; margin-bottom: 6px; }
+    .logo-big span { color: #2d8cf0; }
+    .tagline { font-size: 13px; color: #2a2a2a; margin-bottom: 44px; }
+    .gate-title { font-size: 15px; font-weight: 500; color: #bbb; margin-bottom: 6px; }
+    .gate-sub { font-size: 13px; color: #2e2e2e; text-align: center; line-height: 1.6; margin-bottom: 28px; }
+    .check-row {
+      display: flex; align-items: flex-start; gap: 12px;
+      background: #161616; border: 0.5px solid #222; border-radius: 14px;
+      padding: 14px 16px; margin-bottom: 10px; cursor: pointer; width: 100%;
+      transition: border-color 0.15s; user-select: none;
+    }
+    .check-row:hover { border-color: #2a2a2a; }
+    .check-box {
+      width: 18px; height: 18px; border-radius: 5px; border: 1.5px solid #2a2a2a;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; margin-top: 1px; transition: all 0.15s;
+    }
+    .check-box.checked { background: #2d8cf0; border-color: #2d8cf0; }
+    .check-box svg { width: 11px; height: 11px; opacity: 0; transition: opacity 0.15s; }
+    .check-box.checked svg { opacity: 1; }
+    .check-text { font-size: 13px; color: #555; line-height: 1.5; }
+    .check-text b { color: #888; font-weight: 500; }
+    .enter-btn {
+      width: 100%; padding: 14px; border-radius: 14px; font-size: 15px;
+      font-family: inherit; font-weight: 500; cursor: pointer;
+      background: #1a1a1a; border: 0.5px solid #222; color: #2e2e2e;
+      margin-top: 10px; transition: all 0.2s;
+    }
+    .enter-btn.ready { background: #2d8cf0; border-color: #2d8cf0; color: #fff; }
+    .tos-hint { font-size: 11px; color: #1e1e1e; margin-top: 18px; text-align: center; line-height: 1.8; }
+    .tos-hint a { color: #2a3a50; text-decoration: none; cursor: pointer; }
+    .tos-hint a:hover { color: #3a5a7a; }
+
+    /* TOP BAR */
+    .topbar {
+      padding: 16px 18px 14px; display: flex; align-items: center;
+      gap: 11px; border-bottom: 0.5px solid #1c1c1c; flex-shrink: 0;
+    }
+    .av {
+      width: 38px; height: 38px; border-radius: 50%; background: #0d1f33;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .av svg { width: 17px; height: 17px; }
+    .top-info { flex: 1; }
+    .top-name { font-size: 15px; font-weight: 500; color: #eee; }
+    .top-sub { font-size: 11px; color: #2e2e2e; margin-top: 2px; }
+    .top-actions { display: flex; gap: 8px; align-items: center; }
+    .online { display: flex; align-items: center; gap: 5px; }
+    .odot { width: 7px; height: 7px; border-radius: 50%; background: #2d8cf0; }
+    .otext { font-size: 12px; color: #2d8cf0; }
+    .report-btn {
+      background: transparent; border: 0.5px solid #1e1010; border-radius: 8px;
+      padding: 5px 10px; font-size: 11px; color: #4a1e1e; cursor: pointer;
+      font-family: inherit; transition: all 0.12s; display: flex; align-items: center; gap: 4px;
+    }
+    .report-btn:hover { color: #c0392b; border-color: #2e1010; }
+    .report-btn svg { width: 11px; height: 11px; }
+
+    /* MESSAGES */
+    .msgs {
+      flex: 1; padding: 24px 18px 14px;
+      display: flex; flex-direction: column; overflow-y: auto;
+    }
+    .divider { text-align: center; font-size: 11px; color: #272727; margin-bottom: 20px; }
+    .row { display: flex; margin-bottom: 4px; }
+    .row.me { justify-content: flex-end; }
+    .row.them { justify-content: flex-start; }
+    .row.gap { margin-bottom: 14px; }
+    .bub {
+      padding: 11px 16px; font-size: 14px; line-height: 1.55;
+      max-width: 68%; border-radius: 20px; word-break: break-word;
+    }
+    .bub.them { background: #1e1e1e; color: #c8c8c8; }
+    .bub.me { background: #2d8cf0; color: #fff; }
+    .typing-row { display: none; justify-content: flex-start; margin-bottom: 14px; }
+    .typing-dots { display: flex; gap: 5px; align-items: center; padding: 6px 2px; }
+    .td { width: 7px; height: 7px; border-radius: 50%; background: #333; animation: tda 1.4s infinite; }
+    .td:nth-child(2) { animation-delay: 0.2s; }
+    .td:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes tda {
+      0%, 60%, 100% { opacity: .2; transform: translateY(0); }
+      30% { opacity: 1; transform: translateY(-3px); }
+    }
+    .sys-msg { text-align: center; font-size: 11px; color: #2a2a2a; margin: 6px 0 14px; }
+
+    /* COMPOSER */
+    .composer { border-top: 0.5px solid #1c1c1c; padding: 14px 16px 20px; flex-shrink: 0; }
+    .irow { display: flex; align-items: center; gap: 9px; }
+    .ci {
+      flex: 1; background: #181818; border: 0.5px solid #222; border-radius: 22px;
+      padding: 12px 18px; font-size: 14px; color: #e0e0e0; outline: none;
+      font-family: inherit; transition: border-color 0.15s;
+    }
+    .ci::placeholder { color: #2e2e2e; }
+    .ci:focus { border-color: #1a3d6e; }
+    .sbtn {
+      width: 42px; height: 42px; border-radius: 50%; background: #2d8cf0;
+      border: none; cursor: pointer; display: flex; align-items: center;
+      justify-content: center; flex-shrink: 0; opacity: 0.3; transition: opacity 0.15s;
+    }
+    .sbtn.on { opacity: 1; }
+    .sbtn svg { width: 16px; height: 16px; }
+    .brow { display: flex; gap: 8px; margin-top: 11px; }
+    .bnext {
+      flex: 1; padding: 11px; border-radius: 12px; font-size: 13px; font-family: inherit;
+      cursor: pointer; background: #161616; border: 0.5px solid #202020; color: #3a3a3a; transition: all 0.12s;
+    }
+    .bnext:hover { color: #777; border-color: #2a2a2a; }
+    .bend {
+      flex: 1; padding: 11px; border-radius: 12px; font-size: 13px; font-family: inherit;
+      cursor: pointer; background: #161616; border: 0.5px solid #1e1010; color: #502020; transition: all 0.12s;
+    }
+    .bend:hover { color: #c0392b; border-color: #2e1010; }
+
+    /* WAITING */
+    .wait-screen {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 12px; padding: 32px;
+    }
+    .wdots { display: flex; gap: 8px; }
+    .wdd { width: 9px; height: 9px; border-radius: 50%; background: #2a2a2a; animation: wdda 1.3s infinite; }
+    .wdd:nth-child(2) { animation-delay: 0.18s; }
+    .wdd:nth-child(3) { animation-delay: 0.36s; }
+    @keyframes wdda {
+      0%, 70%, 100% { opacity: .2; transform: scale(1); }
+      35% { opacity: 1; transform: scale(1.3); }
+    }
+    .wlabel { font-size: 13px; color: #2a2a2a; margin-top: 2px; }
+    .wcancl {
+      margin-top: 10px; background: transparent; border: 0.5px solid #1c1c1c;
+      border-radius: 10px; padding: 9px 22px; font-size: 13px;
+      color: #2e2e2e; cursor: pointer; font-family: inherit; transition: color 0.15s;
+    }
+    .wcancl:hover { color: #666; }
+
+    /* REPORT MODAL */
+    .modal-overlay { flex: 1; display: flex; flex-direction: column; }
+    .modal-bg {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      padding: 20px; background: rgba(0,0,0,0.7);
+    }
+    .modal { background: #161616; border: 0.5px solid #222; border-radius: 20px; width: 100%; padding: 24px; }
+    .modal-title { font-size: 15px; font-weight: 500; color: #ddd; margin-bottom: 4px; }
+    .modal-sub { font-size: 12px; color: #333; margin-bottom: 20px; }
+    .reason-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+    .reason {
+      background: #111; border: 0.5px solid #1e1e1e; border-radius: 12px;
+      padding: 11px 14px; font-size: 13px; color: #444; cursor: pointer;
+      transition: all 0.12s; display: flex; align-items: center; gap: 10px;
+    }
+    .reason:hover { border-color: #2a2a2a; color: #777; }
+    .reason.selected { border-color: #1a3d6e; color: #2d8cf0; background: #0d1f33; }
+    .rdot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+    .modal-actions { display: flex; gap: 8px; }
+    .mbtn-cancel {
+      flex: 1; padding: 11px; border-radius: 12px; font-size: 13px; font-family: inherit;
+      cursor: pointer; background: transparent; border: 0.5px solid #1e1e1e; color: #333;
+    }
+    .mbtn-send {
+      flex: 1; padding: 11px; border-radius: 12px; font-size: 13px; font-family: inherit;
+      cursor: pointer; background: #2d8cf0; border: none; color: #fff; opacity: 0.3; transition: opacity 0.15s;
+    }
+    .mbtn-send.on { opacity: 1; }
+
+    /* TOS */
+    .tos-header {
+      padding: 16px 18px 14px; display: flex; align-items: center;
+      gap: 12px; border-bottom: 0.5px solid #1c1c1c; flex-shrink: 0;
+    }
+    .back-btn { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+    .back-btn svg { width: 18px; height: 18px; }
+    .tos-page-title { font-size: 14px; font-weight: 500; color: #bbb; }
+    .tos-body { flex: 1; padding: 20px 18px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
+    .tos-h { font-size: 11px; font-weight: 500; color: #444; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 7px; }
+    .tos-p { font-size: 13px; color: #2e2e2e; line-height: 1.75; }
+    .tos-p b { color: #444; font-weight: 500; }
+
+    /* TOAST */
+    .toast {
+      position: absolute; bottom: 90px; left: 50%; transform: translateX(-50%);
+      background: #1e1010; border: 0.5px solid #3a1010; color: #c0392b;
+      font-size: 12px; padding: 8px 16px; border-radius: 10px;
+      opacity: 0; transition: opacity 0.2s; pointer-events: none; white-space: nowrap;
+    }
+    .toast.show { opacity: 1; }
+
+    @media (max-width: 480px) {
+      body { align-items: flex-start; background: #111; }
+      .app { max-width: 100%; min-height: 100vh; border-radius: 0; border: none; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- AGE GATE -->
+  <div class="screen active" id="screen-gate">
+    <div class="age-gate">
+      <div class="logo-big">sm<span>1</span></div>
+      <div class="tagline">talk to someone new</div>
+      <div class="gate-title">before you enter</div>
+      <div class="gate-sub">sm1 is for adults only.<br/>please confirm to continue.</div>
+      <div class="check-row" onclick="toggleCheck('chk1')">
+        <div class="check-box" id="chk1">
+          <svg viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="check-text">I am <b>18 years of age or older</b></div>
+      </div>
+      <div class="check-row" onclick="toggleCheck('chk2')">
+        <div class="check-box" id="chk2">
+          <svg viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="check-text">I agree to the <b>Terms of Service</b> and will not send illegal or harmful content</div>
+      </div>
+      <button class="enter-btn" id="enter-btn" onclick="enterApp()">enter sm1</button>
+      <div class="tos-hint">
+        by entering you agree to our
+        <a onclick="showScreen('screen-tos')">terms of service</a>
+        and
+        <a onclick="showScreen('screen-tos')">privacy policy</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHAT -->
+  <div class="screen" id="screen-chat">
+    <div class="topbar">
+      <div class="av">
+        <svg viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="8" r="4" stroke="#2d8cf0" stroke-width="1.5"/>
+          <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="#2d8cf0" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="top-info">
+        <div class="top-name">stranger</div>
+        <div class="top-sub">sm1.online · anonymous</div>
+      </div>
+      <div class="top-actions">
+        <button class="report-btn" onclick="showScreen('screen-report')">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          report
+        </button>
+        <div class="online">
+          <div class="odot"></div>
+          <span class="otext" id="online-count">0 online</span>
+        </div>
+      </div>
+    </div>
+    <div class="msgs" id="msg-list">
+      <div class="divider">sm1.online — say hi to someone new</div>
+      <div class="typing-row" id="typing-row">
+        <div class="typing-dots">
+          <div class="td"></div><div class="td"></div><div class="td"></div>
+        </div>
+      </div>
+    </div>
+    <div class="composer">
+      <div class="irow">
+        <input class="ci" id="chat-input" placeholder="message..." maxlength="500"
+          onkeydown="onKey(event)" oninput="onInput(this)" autocomplete="off"/>
+        <button class="sbtn" id="send-btn" onclick="sendMessage()">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+      <div class="brow">
+        <button class="bnext" onclick="skip()">next stranger</button>
+        <button class="bend" onclick="skip()">end chat</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- WAITING -->
+  <div class="screen" id="screen-wait">
+    <div class="wait-screen">
+      <div class="wdots">
+        <div class="wdd"></div><div class="wdd"></div><div class="wdd"></div>
+      </div>
+      <div class="wlabel">finding someone...</div>
+      <button class="wcancl" onclick="cancelWait()">cancel</button>
+    </div>
+  </div>
+
+  <!-- REPORT -->
+  <div class="screen" id="screen-report">
+    <div class="modal-overlay">
+      <div class="topbar" style="opacity:0.25;pointer-events:none;">
+        <div class="av">
+          <svg viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="8" r="4" stroke="#2d8cf0" stroke-width="1.5"/>
+            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="#2d8cf0" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="top-info"><div class="top-name">stranger</div></div>
+      </div>
+      <div class="modal-bg">
+        <div class="modal">
+          <div class="modal-title">report this stranger</div>
+          <div class="modal-sub">anonymous — we'll review it</div>
+          <div class="reason-list">
+            <div class="reason" onclick="selectReason(this)"><div class="rdot"></div>harassment or threats</div>
+            <div class="reason" onclick="selectReason(this)"><div class="rdot"></div>sexual content or solicitation</div>
+            <div class="reason" onclick="selectReason(this)"><div class="rdot"></div>spam or bot</div>
+            <div class="reason" onclick="selectReason(this)"><div class="rdot"></div>underage user</div>
+            <div class="reason" onclick="selectReason(this)"><div class="rdot"></div>other</div>
+          </div>
+          <div class="modal-actions">
+            <button class="mbtn-cancel" onclick="showScreen('screen-chat')">cancel</button>
+            <button class="mbtn-send" id="send-report-btn" onclick="submitReport()">send report</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOS -->
+  <div class="screen" id="screen-tos">
+    <div class="tos-header">
+      <div class="back-btn" onclick="showScreen('screen-gate')">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path d="M15 18l-6-6 6-6" stroke="#555" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="tos-page-title">terms of service</div>
+    </div>
+    <div class="tos-body">
+      <div class="tos-section">
+        <div class="tos-h">age requirement</div>
+        <div class="tos-p">You must be <b>18 years or older</b> to use sm1. By entering you confirm this. We do not knowingly allow minors on the platform.</div>
+      </div>
+      <div class="tos-section">
+        <div class="tos-h">prohibited content</div>
+        <div class="tos-p">You may not share illegal content, sexual content involving minors, personal information of others without consent, threats, or harassment of any kind.</div>
+      </div>
+      <div class="tos-section">
+        <div class="tos-h">no liability</div>
+        <div class="tos-p">sm1 is not responsible for the content of conversations between users. You use this platform at your own risk.</div>
+      </div>
+      <div class="tos-section">
+        <div class="tos-h">data & privacy</div>
+        <div class="tos-p">We do not store chat messages. Server logs including IP addresses may be retained for up to 30 days for security and abuse prevention purposes only.</div>
+      </div>
+      <div class="tos-section">
+        <div class="tos-h">termination</div>
+        <div class="tos-p">We reserve the right to block access to any user who violates these terms at our sole discretion and without prior notice.</div>
+      </div>
+      <div class="tos-section">
+        <div class="tos-h">abuse reporting</div>
+        <div class="tos-p">To report abuse email <b>abuse@sm1.online</b>. You can also use the report button inside any chat.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+  /* SCREENS */
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  /* AGE GATE */
+  const checks = { chk1: false, chk2: false };
+  function toggleCheck(id) {
+    checks[id] = !checks[id];
+    document.getElementById(id).classList.toggle('checked', checks[id]);
+    document.getElementById('enter-btn').classList.toggle('ready', checks.chk1 && checks.chk2);
+  }
+  function enterApp() {
+    if (!checks.chk1 || !checks.chk2) return;
+    showScreen('screen-wait');
+    initWebSocket();
+  }
+
+  /* REPORT */
+  function selectReason(el) {
+    document.querySelectorAll('.reason').forEach(r => r.classList.remove('selected'));
+    el.classList.add('selected');
+    document.getElementById('send-report-btn').classList.add('on');
+  }
+  function submitReport() {
+    if (!document.querySelector('.reason.selected')) return;
+    showToast('report sent — thank you');
+    document.querySelectorAll('.reason').forEach(r => r.classList.remove('selected'));
+    document.getElementById('send-report-btn').classList.remove('on');
+    showScreen('screen-chat');
+  }
+
+  /* WEBSOCKET */
+  let ws = null;
+  let connected = false;
+
+  function initWebSocket() {
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    ws = new WebSocket(`${proto}://${location.host}`);
+    ws.onopen = () => {};
+    ws.onmessage = (e) => {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'online_count') {
+        document.getElementById('online-count').textContent = msg.count + ' online';
+      }
+      if (msg.type === 'waiting') { showScreen('screen-wait'); }
+      if (msg.type === 'matched') {
+        connected = true;
+        showScreen('screen-chat');
+        clearMessages();
+        addSysMsg('connected to a stranger — say hi');
+      }
+      if (msg.type === 'message') {
+        hideTyping();
+        addBubble('them', esc(msg.text));
+      }
+      if (msg.type === 'stranger_left') {
+        connected = false;
+        addSysMsg('stranger disconnected');
+        showScreen('screen-wait');
+      }
+      if (msg.type === 'error') { showToast(msg.text); }
+    };
+    ws.onclose = () => { connected = false; };
+    ws.onerror = () => showToast('connection error');
+  }
+
+  /* CHAT */
+  function sendMessage() {
+    const inp = document.getElementById('chat-input');
+    const text = inp.value.trim();
+    if (!text || !connected || !ws) return;
+    ws.send(JSON.stringify({ type: 'message', text }));
+    addBubble('me', esc(text));
+    inp.value = '';
+    document.getElementById('send-btn').classList.remove('on');
+  }
+  function skip() {
+    connected = false;
+    if (ws) ws.send(JSON.stringify({ type: 'skip' }));
+    showScreen('screen-wait');
+  }
+  function cancelWait() {
+    showScreen('screen-chat');
+    clearMessages();
+    addSysMsg('waiting for a stranger...');
+  }
+  function onKey(e) { if (e.key === 'Enter') sendMessage(); }
+  function onInput(el) {
+    document.getElementById('send-btn').classList.toggle('on', el.value.trim().length > 0);
+  }
+
+  /* DOM HELPERS */
+  function addBubble(side, text) {
+    const list = document.getElementById('msg-list');
+    const typing = document.getElementById('typing-row');
+    const row = document.createElement('div');
+    row.className = 'row ' + side + ' gap';
+    row.innerHTML = '<div class="bub ' + side + '">' + text + '</div>';
+    list.insertBefore(row, typing);
+    list.scrollTop = list.scrollHeight;
+  }
+  function addSysMsg(text) {
+    const list = document.getElementById('msg-list');
+    const typing = document.getElementById('typing-row');
+    const d = document.createElement('div');
+    d.className = 'sys-msg';
+    d.textContent = text;
+    list.insertBefore(d, typing);
+    list.scrollTop = list.scrollHeight;
+  }
+  function clearMessages() {
+    const list = document.getElementById('msg-list');
+    const typing = document.getElementById('typing-row');
+    while (list.firstChild && list.firstChild !== typing) list.removeChild(list.firstChild);
+    const div = document.createElement('div');
+    div.className = 'divider';
+    div.textContent = 'sm1.online — say hi to someone new';
+    list.insertBefore(div, typing);
+  }
+  function hideTyping() { document.getElementById('typing-row').style.display = 'none'; }
+  function showToast(text) {
+    const t = document.getElementById('toast');
+    t.textContent = text;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+  }
+  function esc(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+  }
+</script>
+</body>
+</html>
