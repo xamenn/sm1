@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content"/>
   <title>sm1 — talk to someone</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -98,12 +98,13 @@
     .msgs {
       flex: 1; padding: 24px 18px 14px;
       display: flex; flex-direction: column; overflow-y: auto;
+      min-height: 0;
     }
     .divider { text-align: center; font-size: 11px; color: #272727; margin-bottom: 20px; }
-    .row { display: flex; margin-bottom: 4px; }
+    .row { display: flex; margin-bottom: 2px; }
     .row.me { justify-content: flex-end; }
     .row.them { justify-content: flex-start; }
-    .row.gap { margin-bottom: 14px; }
+    .row.gap { margin-bottom: 6px; }
     .bub {
       padding: 11px 16px; font-size: 14px; line-height: 1.55;
       max-width: 68%; border-radius: 20px; word-break: break-word;
@@ -122,7 +123,7 @@
     .sys-msg { text-align: center; font-size: 11px; color: #2a2a2a; margin: 6px 0 14px; }
 
     /* COMPOSER */
-    .composer { border-top: 0.5px solid #1c1c1c; padding: 14px 16px 20px; padding-bottom: max(20px, env(safe-area-inset-bottom)); flex-shrink: 0; }
+    .composer { border-top: 0.5px solid #1c1c1c; padding: 14px 16px 20px; flex-shrink: 0; }
     .irow { display: flex; align-items: center; gap: 9px; }
     .ci {
       flex: 1; background: #181818; border: 0.5px solid #222; border-radius: 22px;
@@ -141,21 +142,18 @@
     .brow { display: flex; gap: 8px; margin-top: 11px; }
     .bnext {
       flex: 1; padding: 11px; border-radius: 12px; font-size: 13px; font-family: inherit;
-      cursor: pointer; background: #161616; border: 0.5px solid #202020; color: #3a3a3a; transition: all 0.12s;
-      color: #555 !important; background: #161616 !important; border-color: #252525 !important;
+      cursor: pointer; background: #161616 !important; border: 0.5px solid #252525 !important;
+      color: #555 !important; transition: all 0.12s;
+      -webkit-text-fill-color: #555 !important;
     }
-    .bnext:hover { color: #777; border-color: #2a2a2a; }
+    .bnext:hover { color: #777 !important; -webkit-text-fill-color: #777 !important; }
     .bend {
       flex: 1; padding: 11px; border-radius: 12px; font-size: 13px; font-family: inherit;
-      cursor: pointer; background: #161616; border: 0.5px solid #1e1010; color: #502020; transition: all 0.12s;
-      color: #7a2020 !important; background: #161616 !important;
+      cursor: pointer; background: #161616 !important; border: 0.5px solid #1e1010 !important;
+      color: #7a2020 !important; transition: all 0.12s;
+      -webkit-text-fill-color: #7a2020 !important;
     }
-    .bend:hover { color: #c0392b; border-color: #2e1010; }
-    
-    @media (prefers-color-scheme: dark) {
-      .bnext { color: #555 !important; background: #161616 !important; border-color: #252525 !important; }
-      .bend { color: #7a2020 !important; background: #161616 !important; }
-    }
+    .bend:hover { color: #c0392b !important; -webkit-text-fill-color: #c0392b !important; }
 
     /* WAITING */
     .wait-screen {
@@ -215,7 +213,7 @@
     .back-btn { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
     .back-btn svg { width: 18px; height: 18px; }
     .tos-page-title { font-size: 14px; font-weight: 500; color: #bbb; }
-    .tos-body { flex: 1; padding: 20px 18px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
+    .tos-body { flex: 1; padding: 20px 18px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; min-height: 0; }
     .tos-h { font-size: 11px; font-weight: 500; color: #444; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 7px; }
     .tos-p { font-size: 13px; color: #2e2e2e; line-height: 1.75; }
     .tos-p b { color: #444; font-weight: 500; }
@@ -229,18 +227,72 @@
     }
     .toast.show { opacity: 1; }
 
+    /* =====================
+       MOBILE FIX
+       The trick: app is fixed to viewport, screen-chat uses
+       flex column so topbar+composer are flex-shrink:0 and
+       msgs takes remaining space. keyboard resizes the viewport
+       via interactive-widget=resizes-content so the layout
+       just shrinks naturally — topbar stays top, composer stays bottom.
+    ===================== */
     @media (max-width: 480px) {
-      html { height: 100%; overflow: hidden; }
-      body { height: 100%; overflow: hidden; background: #111; display: block; padding: 0; margin: 0; }
-      .app { position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; max-width: 100%; min-height: unset; border-radius: 0; border: none; display: flex; flex-direction: column; overflow: hidden; }
-      .screen { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: none; flex-direction: column; overflow: hidden; }
+      html, body {
+        height: 100%;
+        overflow: hidden;
+        background: #111;
+      }
+      body {
+        display: block;
+        min-height: unset;
+      }
+      .app {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        width: 100%;
+        height: 100%;
+        max-width: 100%;
+        min-height: unset;
+        border-radius: 0;
+        border: none;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .screen {
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+        display: none;
+        flex-direction: column;
+      }
       .screen.active { display: flex; }
-      .topbar { flex-shrink: 0; z-index: 10; width: 100%; }
-      .msgs { flex: 1; min-height: 0; overflow-y: scroll; -webkit-overflow-scrolling: touch; }
-      .composer { flex-shrink: 0; padding-bottom: 20px; width: 100%; }
+      #screen-chat {
+        display: none;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+      }
+      #screen-chat.active { display: flex; }
+      .topbar {
+        flex-shrink: 0;
+        flex-grow: 0;
+      }
+      .msgs {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+      }
+      .composer {
+        flex-shrink: 0;
+        flex-grow: 0;
+        padding-bottom: max(20px, env(safe-area-inset-bottom));
+      }
       .wait-screen { flex: 1; min-height: 0; }
       .age-gate { flex: 1; min-height: 0; overflow-y: auto; }
-      .modal-overlay { flex: 1; min-height: 0; }
+      .modal-overlay { flex: 1; min-height: 0; display: flex; flex-direction: column; }
       .tos-body { flex: 1; min-height: 0; }
     }
   </style>
@@ -453,26 +505,19 @@
 
   document.addEventListener('visibilitychange', () => {
     if (!ws || ws.readyState !== WebSocket.OPEN) {
-      if (leaveTimer) {
-        clearTimeout(leaveTimer);
-        leaveTimer = null;
-      }
+      if (leaveTimer) { clearTimeout(leaveTimer); leaveTimer = null; }
       return;
     }
-
     if (document.hidden) {
       leaveTimer = setTimeout(() => {
         if (ws && ws.readyState === WebSocket.OPEN) {
-          try { ws.send(JSON.stringify({ type: 'skip' })); } catch (e) {}
+          try { ws.send(JSON.stringify({ type: 'skip' })); } catch(e) {}
           ws.close();
         }
         leaveTimer = null;
       }, 60000);
     } else {
-      if (leaveTimer) {
-        clearTimeout(leaveTimer);
-        leaveTimer = null;
-      }
+      if (leaveTimer) { clearTimeout(leaveTimer); leaveTimer = null; }
     }
   });
 
