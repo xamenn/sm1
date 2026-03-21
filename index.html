@@ -122,7 +122,7 @@
     .sys-msg { text-align: center; font-size: 11px; color: #2a2a2a; margin: 6px 0 14px; }
 
     /* COMPOSER */
-    .composer { border-top: 0.5px solid #1c1c1c; padding: 14px 16px 20px; flex-shrink: 0; }
+    .composer { border-top: 0.5px solid #1c1c1c; padding: 14px 16px 20px; padding-bottom: max(20px, env(safe-area-inset-bottom)); flex-shrink: 0; }
     .irow { display: flex; align-items: center; gap: 9px; }
     .ci {
       flex: 1; background: #181818; border: 0.5px solid #222; border-radius: 22px;
@@ -142,11 +142,15 @@
     .bnext {
       flex: 1; padding: 11px; border-radius: 12px; font-size: 13px; font-family: inherit;
       cursor: pointer; background: #161616; border: 0.5px solid #202020; color: #3a3a3a; transition: all 0.12s;
+      color: #666666 !important; background-color: #1a1a1a !important; border-color: #2a2a2a !important;
+      -webkit-text-fill-color: #666666 !important;
     }
     .bnext:hover { color: #777; border-color: #2a2a2a; }
     .bend {
       flex: 1; padding: 11px; border-radius: 12px; font-size: 13px; font-family: inherit;
       cursor: pointer; background: #161616; border: 0.5px solid #1e1010; color: #502020; transition: all 0.12s;
+      color: #c0392b !important; background-color: #1a1a1a !important; border-color: #2e1010 !important;
+      -webkit-text-fill-color: #c0392b !important;
     }
     .bend:hover { color: #c0392b; border-color: #2e1010; }
 
@@ -456,6 +460,32 @@
   /* WEBSOCKET */
   let ws = null;
   let connected = false;
+  let leaveTimer = null;
+
+  document.addEventListener('visibilitychange', () => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      if (leaveTimer) {
+        clearTimeout(leaveTimer);
+        leaveTimer = null;
+      }
+      return;
+    }
+
+    if (document.hidden) {
+      leaveTimer = setTimeout(() => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          try { ws.send(JSON.stringify({ type: 'skip' })); } catch (e) {}
+          ws.close();
+        }
+        leaveTimer = null;
+      }, 10000);
+    } else {
+      if (leaveTimer) {
+        clearTimeout(leaveTimer);
+        leaveTimer = null;
+      }
+    }
+  });
 
   function initWebSocket() {
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
