@@ -35,7 +35,7 @@ const server = http.createServer((req, res) => {
 // --- WebSocket server ---
 const wss = new WebSocketServer({ server, maxPayload: MAX_PAYLOAD_BYTES });
 
-let waitingUser = null; // holds one waiting socket
+const waitingQueue = [];
 let onlineCount = 0;
 
 wss.on('connection', (ws, req) => {
@@ -67,9 +67,9 @@ wss.on('connection', (ws, req) => {
   ws.msgTimestamps = []; // for rate limiting
 
   // Try to match with waiting user
-  if (waitingUser && waitingUser.readyState === WebSocket.OPEN) {
-    const partner = waitingUser;
-    waitingUser = null;
+  waitingQueue = waitingQueue.filter(s => s.readyState === WebSocket.OPEN);
+  if (waitingQueue.length > 0) {
+    const partner = waitingQueue.shift();
 
     ws.partner = partner;
     partner.partner = ws;
@@ -77,7 +77,7 @@ wss.on('connection', (ws, req) => {
     ws.send(JSON.stringify({ type: 'matched' }));
     partner.send(JSON.stringify({ type: 'matched' }));
   } else {
-    waitingUser = ws;
+    waitingQueue.push(ws);
     ws.send(JSON.stringify({ type: 'waiting' }));
   }
 
@@ -117,15 +117,15 @@ wss.on('connection', (ws, req) => {
       // Re-queue this user
       ws.partner = null;
       ws.msgTimestamps = [];
-      if (waitingUser && waitingUser.readyState === WebSocket.OPEN) {
-        const partner = waitingUser;
-        waitingUser = null;
+      waitingQueue = waitingQueue.filter(s => s.readyState === WebSocket.OPEN);
+      if (waitingQueue.length > 0) {
+        const partner = waitingQueue.shift();
         ws.partner = partner;
         partner.partner = ws;
         ws.send(JSON.stringify({ type: 'matched' }));
         partner.send(JSON.stringify({ type: 'matched' }));
       } else {
-        waitingUser = ws;
+        waitingQueue.push(ws);
         ws.send(JSON.stringify({ type: 'waiting' }));
       }
     }
@@ -135,7 +135,8 @@ wss.on('connection', (ws, req) => {
     onlineCount = Math.max(0, onlineCount - 1);
     broadcastOnlineCount();
     handleDisconnect(ws, 'disconnected');
-    if (waitingUser === ws) waitingUser = null;
+    const queueIndex = waitingQueue.indexOf(ws);
+    if (queueIndex !== -1) waitingQueue.splice(queueIndex, 1);
     // Decrement IP count
     if (ws.clientIp) {
       const c = ipConnections.get(ws.clientIp) || 1;
@@ -154,15 +155,15 @@ function handleDisconnect(ws, reason) {
     ws.partner.send(JSON.stringify({ type: 'stranger_left', reason }));
     // Put partner back in queue
     ws.partner.partner = null;
-    if (waitingUser && waitingUser.readyState === WebSocket.OPEN && waitingUser !== ws.partner) {
-      const newPartner = waitingUser;
-      waitingUser = null;
+    waitingQueue = waitingQueue.filter(s => s.readyState === WebSocket.OPEN);
+    if (waitingQueue.length > 0) {
+      const newPartner = waitingQueue.shift();
       ws.partner.partner = newPartner;
       newPartner.partner = ws.partner;
       ws.partner.send(JSON.stringify({ type: 'matched' }));
       newPartner.send(JSON.stringify({ type: 'matched' }));
     } else {
-      waitingUser = ws.partner;
+      waitingQueue.push(ws.partner);
       ws.partner.send(JSON.stringify({ type: 'waiting' }));
     }
   }
@@ -178,7 +179,7 @@ function broadcastOnlineCount() {
   });
 }
 
-// Heartbeat — drop dead connections every 30s
+// Heartbeat — drop dead connections every 15s
 const heartbeat = setInterval(() => {
   wss.clients.forEach(ws => {
     if (!ws.isAlive) {
@@ -188,7 +189,7 @@ const heartbeat = setInterval(() => {
     ws.isAlive = false;
     ws.ping();
   });
-}, 30000);
+}, 15000);
 
 wss.on('close', () => clearInterval(heartbeat));
 
