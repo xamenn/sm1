@@ -502,6 +502,7 @@
   let ws = null;
   let connected = false;
   let leaveTimer = null;
+  let typingThrottle = null;
 
   document.addEventListener('visibilitychange', () => {
     if (!ws || ws.readyState !== WebSocket.OPEN) {
@@ -541,6 +542,12 @@
         hideTyping();
         addBubble('them', esc(msg.text));
       }
+      if (msg.type === 'typing') {
+        showTyping();
+      }
+      if (msg.type === 'stop_typing') {
+        hideTyping();
+      }
       if (msg.type === 'stranger_left') {
         connected = false;
         addSysMsg('stranger disconnected');
@@ -561,6 +568,11 @@
     addBubble('me', esc(text));
     inp.value = '';
     document.getElementById('send-btn').classList.remove('on');
+    if (typingThrottle) {
+      clearTimeout(typingThrottle);
+      typingThrottle = null;
+    }
+    ws.send(JSON.stringify({ type: 'stop_typing' }));
   }
   function skip() {
     connected = false;
@@ -575,6 +587,20 @@
   function onKey(e) { if (e.key === 'Enter') sendMessage(); }
   function onInput(el) {
     document.getElementById('send-btn').classList.toggle('on', el.value.trim().length > 0);
+    if (!connected || !ws) return;
+    const hasText = el.value.trim().length > 0;
+    if (hasText) {
+      if (!typingThrottle) {
+        ws.send(JSON.stringify({ type: 'typing' }));
+        typingThrottle = setTimeout(() => { typingThrottle = null; }, 2000);
+      }
+    } else {
+      if (typingThrottle) {
+        clearTimeout(typingThrottle);
+        typingThrottle = null;
+      }
+      ws.send(JSON.stringify({ type: 'stop_typing' }));
+    }
   }
 
   /* DOM HELPERS */
@@ -606,6 +632,11 @@
     list.insertBefore(div, typing);
   }
   function hideTyping() { document.getElementById('typing-row').style.display = 'none'; }
+  function showTyping() {
+    document.getElementById('typing-row').style.display = 'flex';
+    const list = document.getElementById('msg-list');
+    list.scrollTop = list.scrollHeight;
+  }
   function showToast(text) {
     const t = document.getElementById('toast');
     t.textContent = text;

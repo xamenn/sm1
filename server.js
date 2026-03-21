@@ -90,6 +90,18 @@ wss.on('connection', (ws, req) => {
       }
     }
 
+    if (parsed.type === 'typing') {
+      if (ws.partner && ws.partner.readyState === WebSocket.OPEN) {
+        ws.partner.send(JSON.stringify({ type: 'typing' }));
+      }
+    }
+
+    if (parsed.type === 'stop_typing') {
+      if (ws.partner && ws.partner.readyState === WebSocket.OPEN) {
+        ws.partner.send(JSON.stringify({ type: 'stop_typing' }));
+      }
+    }
+
     if (parsed.type === 'skip') {
       handleDisconnect(ws, 'skipped');
       ws.partner = null;
