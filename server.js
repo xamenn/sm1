@@ -4,96 +4,78 @@ const fs = require('fs');
 const path = require('path');
 
 const PORT = process.env.PORT || 3000;
-const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || null; // set to 'https://sm1.online' in Railway
+const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || null;
 const MAX_MSG_LENGTH = 500;
 const RATE_LIMIT_COUNT = 5;
 const RATE_LIMIT_WINDOW_MS = 3000;
-const MAX_PAYLOAD_BYTES = 4096; // 4KB max WebSocket frame
-const MAX_CONNECTIONS_PER_IP = 5; // stop tab farming
+const MAX_PAYLOAD_BYTES = 4096;
+const MAX_CONNECTIONS_PER_IP = 5;
 
-const ipConnections = new Map(); // ip -> count
+const ipConnections = new Map();
+let waitingQueue = [];
+let onlineCount = 0;
 
-// --- HTTP server (serves index.html) ---
 const server = http.createServer((req, res) => {
   if (req.method === 'GET' && (req.url === '/' || req.url === '/index.html')) {
     const filePath = path.join(__dirname, 'index.html');
     fs.readFile(filePath, (err, data) => {
-      if (err) {
-        res.writeHead(500);
-        res.end('Server error');
-        return;
-      }
+      if (err) { res.writeHead(500); res.end('Server error'); return; }
       res.writeHead(200, { 'Content-Type': 'text/html' });
       res.end(data);
     });
   } else {
-    res.writeHead(404);
-    res.end('Not found');
+    res.writeHead(404); res.end('Not found');
   }
 });
 
-// --- WebSocket server ---
 const wss = new WebSocketServer({ server, maxPayload: MAX_PAYLOAD_BYTES });
 
-const waitingQueue = [];
-let onlineCount = 0;
-
-wss.on('connection', (ws, req) => {
-  // Origin check (only enforced if ALLOWED_ORIGIN is set)
-  if (ALLOWED_ORIGIN) {
-    const origin = req.headers['origin'];
-    if (origin !== ALLOWED_ORIGIN) {
-      ws.close(1008, 'Origin not allowed');
-      return;
-    }
-  }
-
-  // Per-IP connection limit
-  const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress;
-  const ipCount = ipConnections.get(ip) || 0;
-  if (ipCount >= MAX_CONNECTIONS_PER_IP) {
-    ws.close(1008, 'Too many connections');
-    return;
-  }
-  ipConnections.set(ip, ipCount + 1);
-  ws.clientIp = ip;
-
-  onlineCount++;
-  broadcastOnlineCount();
-
-  // Per-connection state
-  ws.partner = null;
-  ws.isAlive = true;
-  ws.msgTimestamps = []; // for rate limiting
-
-  // Try to match with waiting user
+function getWaiting() {
   waitingQueue = waitingQueue.filter(s => s.readyState === WebSocket.OPEN);
-  if (waitingQueue.length > 0) {
-    const partner = waitingQueue.shift();
+  return waitingQueue.length > 0 ? waitingQueue.shift() : null;
+}
 
+function tryMatch(ws) {
+  const partner = getWaiting();
+  if (partner) {
     ws.partner = partner;
     partner.partner = ws;
-
     ws.send(JSON.stringify({ type: 'matched' }));
     partner.send(JSON.stringify({ type: 'matched' }));
   } else {
     waitingQueue.push(ws);
     ws.send(JSON.stringify({ type: 'waiting' }));
   }
+}
+
+wss.on('connection', (ws, req) => {
+  if (ALLOWED_ORIGIN) {
+    const origin = req.headers['origin'];
+    if (origin !== ALLOWED_ORIGIN) { ws.close(1008, 'Origin not allowed'); return; }
+  }
+
+  const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress;
+  const ipCount = ipConnections.get(ip) || 0;
+  if (ipCount >= MAX_CONNECTIONS_PER_IP) { ws.close(1008, 'Too many connections'); return; }
+  ipConnections.set(ip, ipCount + 1);
+  ws.clientIp = ip;
+
+  onlineCount++;
+  broadcastOnlineCount();
+
+  ws.partner = null;
+  ws.isAlive = true;
+  ws.msgTimestamps = [];
+
+  tryMatch(ws);
 
   ws.on('pong', () => { ws.isAlive = true; });
 
   ws.on('message', (data) => {
-    // Parse message
     let parsed;
-    try {
-      parsed = JSON.parse(data);
-    } catch {
-      return;
-    }
+    try { parsed = JSON.parse(data); } catch { return; }
 
     if (parsed.type === 'message') {
-      // Rate limiting
       const now = Date.now();
       ws.msgTimestamps = ws.msgTimestamps.filter(t => now - t < RATE_LIMIT_WINDOW_MS);
       if (ws.msgTimestamps.length >= RATE_LIMIT_COUNT) {
@@ -101,12 +83,8 @@ wss.on('connection', (ws, req) => {
         return;
       }
       ws.msgTimestamps.push(now);
-
-      // Length check
       const text = String(parsed.text || '').trim();
       if (!text || text.length > MAX_MSG_LENGTH) return;
-
-      // Forward to partner
       if (ws.partner && ws.partner.readyState === WebSocket.OPEN) {
         ws.partner.send(JSON.stringify({ type: 'message', text }));
       }
@@ -114,20 +92,9 @@ wss.on('connection', (ws, req) => {
 
     if (parsed.type === 'skip') {
       handleDisconnect(ws, 'skipped');
-      // Re-queue this user
       ws.partner = null;
       ws.msgTimestamps = [];
-      waitingQueue = waitingQueue.filter(s => s.readyState === WebSocket.OPEN);
-      if (waitingQueue.length > 0) {
-        const partner = waitingQueue.shift();
-        ws.partner = partner;
-        partner.partner = ws;
-        ws.send(JSON.stringify({ type: 'matched' }));
-        partner.send(JSON.stringify({ type: 'matched' }));
-      } else {
-        waitingQueue.push(ws);
-        ws.send(JSON.stringify({ type: 'waiting' }));
-      }
+      tryMatch(ws);
     }
   });
 
@@ -135,9 +102,7 @@ wss.on('connection', (ws, req) => {
     onlineCount = Math.max(0, onlineCount - 1);
     broadcastOnlineCount();
     handleDisconnect(ws, 'disconnected');
-    const queueIndex = waitingQueue.indexOf(ws);
-    if (queueIndex !== -1) waitingQueue.splice(queueIndex, 1);
-    // Decrement IP count
+    waitingQueue = waitingQueue.filter(s => s !== ws);
     if (ws.clientIp) {
       const c = ipConnections.get(ws.clientIp) || 1;
       if (c <= 1) ipConnections.delete(ws.clientIp);
@@ -145,54 +110,30 @@ wss.on('connection', (ws, req) => {
     }
   });
 
-  ws.on('error', () => {
-    ws.terminate();
-  });
+  ws.on('error', () => { ws.terminate(); });
 });
 
 function handleDisconnect(ws, reason) {
   if (ws.partner && ws.partner.readyState === WebSocket.OPEN) {
     ws.partner.send(JSON.stringify({ type: 'stranger_left', reason }));
-    // Put partner back in queue
     ws.partner.partner = null;
-    waitingQueue = waitingQueue.filter(s => s.readyState === WebSocket.OPEN);
-    if (waitingQueue.length > 0) {
-      const newPartner = waitingQueue.shift();
-      ws.partner.partner = newPartner;
-      newPartner.partner = ws.partner;
-      ws.partner.send(JSON.stringify({ type: 'matched' }));
-      newPartner.send(JSON.stringify({ type: 'matched' }));
-    } else {
-      waitingQueue.push(ws.partner);
-      ws.partner.send(JSON.stringify({ type: 'waiting' }));
-    }
+    tryMatch(ws.partner);
   }
   ws.partner = null;
 }
 
 function broadcastOnlineCount() {
   const msg = JSON.stringify({ type: 'online_count', count: onlineCount });
-  wss.clients.forEach(client => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(msg);
-    }
-  });
+  wss.clients.forEach(c => { if (c.readyState === WebSocket.OPEN) c.send(msg); });
 }
 
-// Heartbeat — drop dead connections every 15s
 const heartbeat = setInterval(() => {
   wss.clients.forEach(ws => {
-    if (!ws.isAlive) {
-      ws.terminate();
-      return;
-    }
+    if (!ws.isAlive) { ws.terminate(); return; }
     ws.isAlive = false;
     ws.ping();
   });
 }, 15000);
 
 wss.on('close', () => clearInterval(heartbeat));
-
-server.listen(PORT, () => {
-  console.log(`sm1 server running on port ${PORT}`);
-});
+server.listen(PORT, () => console.log(`sm1 running on port ${PORT}`));
