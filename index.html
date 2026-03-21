@@ -624,16 +624,24 @@
   }
   function clearMessages() {
     const list = document.getElementById('msg-list');
-    const typing = document.getElementById('typing-row');
-    while (list.firstChild && list.firstChild !== typing) list.removeChild(list.firstChild);
+    while (list.firstChild) list.removeChild(list.firstChild);
     const div = document.createElement('div');
     div.className = 'divider';
     div.textContent = 'sm1.online — say hi to someone new';
-    list.insertBefore(div, typing);
+    list.appendChild(div);
+    let typing = document.getElementById('typing-row');
+    if (!typing) {
+      typing = document.createElement('div');
+      typing.className = 'typing-row';
+      typing.id = 'typing-row';
+      typing.innerHTML = '<div class="typing-dots"><div class="td"></div><div class="td"></div><div class="td"></div></div>';
+    }
+    list.appendChild(typing);
   }
   function hideTyping() { document.getElementById('typing-row').style.display = 'none'; }
   function showTyping() {
-    document.getElementById('typing-row').style.display = 'flex';
+    const row = document.getElementById('typing-row');
+    row.style.display = 'flex';
     const list = document.getElementById('msg-list');
     list.scrollTop = list.scrollHeight;
   }
