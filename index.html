@@ -619,18 +619,20 @@
     return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
   }
 
-  // Lock app height on mobile so keyboard never pushes content up
-  function lockHeight() {
-    if (window.innerWidth <= 480) {
-      const app = document.querySelector('.app');
-      if (app) {
-        app.style.height = window.innerHeight + 'px';
-        app.style.bottom = 'auto';
-      }
+  // Android keyboard fix using visualViewport API
+  if (window.visualViewport && window.innerWidth <= 480) {
+    const app = document.querySelector('.app');
+    function handleViewport() {
+      const vv = window.visualViewport;
+      app.style.height = vv.height + 'px';
+      app.style.top = vv.offsetTop + 'px';
+      app.style.left = vv.offsetLeft + 'px';
+      app.style.width = vv.width + 'px';
     }
+    window.visualViewport.addEventListener('resize', handleViewport);
+    window.visualViewport.addEventListener('scroll', handleViewport);
+    handleViewport();
   }
-  lockHeight();
-  window.addEventListener('resize', lockHeight);
 </script>
 </body>
 </html>
