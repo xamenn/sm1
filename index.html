@@ -629,21 +629,24 @@
     div.className = 'divider';
     div.textContent = 'sm1.online — say hi to someone new';
     list.appendChild(div);
-    let typing = document.getElementById('typing-row');
-    if (!typing) {
-      typing = document.createElement('div');
-      typing.className = 'typing-row';
-      typing.id = 'typing-row';
-      typing.innerHTML = '<div class="typing-dots"><div class="td"></div><div class="td"></div><div class="td"></div></div>';
-    }
+    const typing = document.createElement('div');
+    typing.className = 'typing-row';
+    typing.id = 'typing-row';
+    typing.style.display = 'none';
+    typing.innerHTML = '<div class="typing-dots"><div class="td"></div><div class="td"></div><div class="td"></div></div>';
     list.appendChild(typing);
   }
-  function hideTyping() { document.getElementById('typing-row').style.display = 'none'; }
+  function hideTyping() {
+    const row = document.getElementById('typing-row');
+    if (row) row.style.display = 'none';
+  }
   function showTyping() {
     const row = document.getElementById('typing-row');
-    row.style.display = 'flex';
-    const list = document.getElementById('msg-list');
-    list.scrollTop = list.scrollHeight;
+    if (row) {
+      row.style.display = 'flex';
+      const list = document.getElementById('msg-list');
+      list.scrollTop = list.scrollHeight;
+    }
   }
   function showToast(text) {
     const t = document.getElementById('toast');
