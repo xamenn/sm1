@@ -236,21 +236,21 @@
        just shrinks naturally — topbar stays top, composer stays bottom.
     ===================== */
     @media (max-width: 480px) {
-  html, body { height: 100%; overflow: hidden; background: #111; }
-  body { display: block; min-height: unset; }
+  html, body { height: 100%; background: #111; }
+  body { display: block; min-height: unset; overflow: hidden; }
   .app {
-    position: fixed; top: 0; left: 0; right: 0;
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
     width: 100%; max-width: 100%; min-height: unset;
     border-radius: 0; border: none;
     display: flex; flex-direction: column; overflow: hidden;
   }
-  .screen { flex: 1; min-height: 0; overflow: hidden; display: none; flex-direction: column; }
+  .screen { flex: 1; min-height: 0; display: none; flex-direction: column; overflow: hidden; }
   .screen.active { display: flex; }
   #screen-chat { display: none; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
   #screen-chat.active { display: flex; }
-  .topbar { flex-shrink: 0; flex-grow: 0; position: relative; z-index: 2; background: #111; }
-  .msgs { flex: 1; min-height: 0; overflow-y: scroll; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
-  .composer { flex-shrink: 0; flex-grow: 0; padding-bottom: max(20px, env(safe-area-inset-bottom)); background: #111; }
+  .topbar { position: sticky; top: 0; z-index: 10; flex-shrink: 0; background: #111; }
+  .msgs { flex: 1; min-height: 0; overflow-y: scroll; -webkit-overflow-scrolling: touch; }
+  .composer { flex-shrink: 0; background: #111; padding-bottom: max(20px, env(safe-area-inset-bottom)); }
   .wait-screen { flex: 1; min-height: 0; }
   .age-gate { flex: 1; min-height: 0; overflow-y: auto; }
   .modal-overlay { flex: 1; min-height: 0; display: flex; flex-direction: column; }
@@ -617,21 +617,6 @@
   }
   function esc(s) {
     return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
-  }
-
-  // Android keyboard fix using visualViewport API
-  if (window.visualViewport && window.innerWidth <= 480) {
-    const app = document.querySelector('.app');
-    function handleViewport() {
-      const vv = window.visualViewport;
-      app.style.height = vv.height + 'px';
-      app.style.top = vv.offsetTop + 'px';
-      app.style.left = vv.offsetLeft + 'px';
-      app.style.width = vv.width + 'px';
-    }
-    window.visualViewport.addEventListener('resize', handleViewport);
-    window.visualViewport.addEventListener('scroll', handleViewport);
-    handleViewport();
   }
 </script>
 </body>
