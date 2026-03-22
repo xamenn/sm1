@@ -251,11 +251,17 @@
     display: none; flex-direction: column; overflow: hidden;
   }
   .screen.active { display: flex; }
-  .topbar { flex: 0 0 auto; background: #111; z-index: 10; }
-  .msgs { flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch; min-height: 0; }
-  .composer { flex: 0 0 auto; background: #111; padding-bottom: env(safe-area-inset-bottom, 12px); }
-  #screen-wait { display: none; flex-direction: column; align-items: center; justify-content: center; }
-  #screen-wait.active { display: flex; }
+  #screen-chat {
+    display: none;
+    flex-direction: column;
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    overflow: hidden;
+  }
+  #screen-chat.active { display: flex; }
+  .topbar { flex: 0 0 auto; background: #111; z-index: 10; width: 100%; }
+  .msgs { flex: 1 1 0px; overflow-y: auto; -webkit-overflow-scrolling: touch; min-height: 0; width: 100%; }
+  .composer { flex: 0 0 auto; background: #111; width: 100%; padding-bottom: env(safe-area-inset-bottom, 16px); }
   .wait-screen { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
   .age-gate { flex: 1; overflow-y: auto; min-height: 0; }
   .modal-overlay { flex: 1; min-height: 0; display: flex; flex-direction: column; }
@@ -630,8 +636,13 @@
       const vv = window.visualViewport;
       const app = document.querySelector('.app');
       if (!app) return;
-      app.style.height = vv.height + 'px';
-      app.style.top = vv.offsetTop + 'px';
+      app.style.height = Math.round(vv.height) + 'px';
+      app.style.top = Math.round(vv.offsetTop) + 'px';
+      app.style.left = Math.round(vv.offsetLeft) + 'px';
+      app.style.width = Math.round(vv.width) + 'px';
+      // Scroll msgs to bottom when keyboard opens
+      const msgs = document.getElementById('msg-list');
+      if (msgs) msgs.scrollTop = msgs.scrollHeight;
     }
     window.visualViewport.addEventListener('resize', onVVResize);
     window.visualViewport.addEventListener('scroll', onVVResize);
