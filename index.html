@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
   <title>sm1 — talk to someone</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -161,18 +161,18 @@
       align-items: center; justify-content: center; gap: 12px; padding: 32px;
     }
     .wdots { display: flex; gap: 8px; }
-    .wdd { width: 9px; height: 9px; border-radius: 50%; background: #2a2a2a; animation: wdda 1.3s infinite; }
+    .wdd { width: 9px; height: 9px; border-radius: 50%; background: #555; animation: wdda 1.3s infinite; }
     .wdd:nth-child(2) { animation-delay: 0.18s; }
     .wdd:nth-child(3) { animation-delay: 0.36s; }
     @keyframes wdda {
       0%, 70%, 100% { opacity: .2; transform: scale(1); }
       35% { opacity: 1; transform: scale(1.3); }
     }
-    .wlabel { font-size: 13px; color: #2a2a2a; margin-top: 2px; }
+    .wlabel { font-size: 13px; color: #555; margin-top: 2px; }
     .wcancl {
-      margin-top: 10px; background: transparent; border: 0.5px solid #1c1c1c;
+      margin-top: 10px; background: transparent; border: 0.5px solid #2a2a2a;
       border-radius: 10px; padding: 9px 22px; font-size: 13px;
-      color: #2e2e2e; cursor: pointer; font-family: inherit; transition: color 0.15s;
+      color: #555; cursor: pointer; font-family: inherit; transition: color 0.15s;
     }
     .wcancl:hover { color: #666; }
 
@@ -236,21 +236,16 @@
        just shrinks naturally — topbar stays top, composer stays bottom.
     ===================== */
     @media (max-width: 480px) {
-  html, body { height: 100%; background: #111; }
-  body { display: block; min-height: unset; overflow: hidden; }
-  .app {
-    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    width: 100%; max-width: 100%; min-height: unset;
-    border-radius: 0; border: none;
-    display: flex; flex-direction: column; overflow: hidden;
-  }
+  html { height: 100dvh; height: 100vh; overflow: hidden; }
+  body { height: 100dvh; height: 100vh; overflow: hidden; background: #111; display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; min-height: unset; padding: 0; }
+  .app { position: static; width: 100%; height: 100%; max-width: 100%; min-height: unset; border-radius: 0; border: none; flex: 1; display: flex; flex-direction: column; overflow: hidden; }
   .screen { flex: 1; min-height: 0; display: none; flex-direction: column; overflow: hidden; }
   .screen.active { display: flex; }
   #screen-chat { display: none; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
   #screen-chat.active { display: flex; }
-  .topbar { position: sticky; top: 0; z-index: 10; flex-shrink: 0; background: #111; }
-  .msgs { flex: 1; min-height: 0; overflow-y: scroll; -webkit-overflow-scrolling: touch; }
-  .composer { flex-shrink: 0; background: #111; padding-bottom: max(20px, env(safe-area-inset-bottom)); }
+  .topbar { flex: 0 0 auto; z-index: 2; background: #111; width: 100%; }
+  .msgs { flex: 1 1 0; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .composer { flex: 0 0 auto; background: #111; padding-bottom: max(16px, env(safe-area-inset-bottom)); }
   .wait-screen { flex: 1; min-height: 0; }
   .age-gate { flex: 1; min-height: 0; overflow-y: auto; }
   .modal-overlay { flex: 1; min-height: 0; display: flex; flex-direction: column; }
