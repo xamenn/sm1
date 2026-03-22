@@ -236,65 +236,21 @@
        just shrinks naturally — topbar stays top, composer stays bottom.
     ===================== */
     @media (max-width: 480px) {
-      html, body {
-        height: 100%;
-        overflow: hidden;
-        background: #111;
-      }
-      body {
-        display: block;
-        min-height: unset;
-      }
-      .app {
-        position: fixed;
-        top: 0; left: 0; right: 0; bottom: 0;
-        width: 100%;
-        height: 100%;
-        max-width: 100%;
-        min-height: unset;
-        border-radius: 0;
-        border: none;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-      }
-      .screen {
-        flex: 1;
-        min-height: 0;
-        overflow: hidden;
-        display: none;
-        flex-direction: column;
-      }
-      .screen.active { display: flex; }
-      #screen-chat {
-        display: none;
-        flex-direction: column;
-        flex: 1;
-        min-height: 0;
-        overflow: hidden;
-      }
-      #screen-chat.active { display: flex; }
-      .topbar {
-        flex-shrink: 0;
-        flex-grow: 0;
-      }
-      .msgs {
-        flex: 1;
-        min-height: 0;
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
-        overscroll-behavior: contain;
-      }
-      .composer {
-        flex-shrink: 0;
-        flex-grow: 0;
-        padding-bottom: max(20px, env(safe-area-inset-bottom));
-      }
-      .wait-screen { flex: 1; min-height: 0; }
-      .age-gate { flex: 1; min-height: 0; overflow-y: auto; }
-      .modal-overlay { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-      .tos-body { flex: 1; min-height: 0; }
-    }
+  html, body { height: 100%; overflow: hidden; background: #111; }
+  body { display: block; min-height: unset; }
+  .app { position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; max-width: 100%; min-height: unset; border-radius: 0; border: none; display: flex; flex-direction: column; overflow: hidden; }
+  .screen { flex: 1; min-height: 0; overflow: hidden; display: none; flex-direction: column; }
+  .screen.active { display: flex; }
+  #screen-chat { display: none; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
+  #screen-chat.active { display: flex; }
+  .topbar { flex-shrink: 0; flex-grow: 0; }
+  .msgs { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+  .composer { flex-shrink: 0; flex-grow: 0; padding-bottom: max(20px, env(safe-area-inset-bottom)); }
+  .wait-screen { flex: 1; min-height: 0; }
+  .age-gate { flex: 1; min-height: 0; overflow-y: auto; }
+  .modal-overlay { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .tos-body { flex: 1; min-height: 0; }
+}
   </style>
 </head>
 <body>
@@ -357,7 +313,7 @@
     </div>
     <div class="msgs" id="msg-list">
       <div class="divider">sm1.online — say hi to someone new</div>
-      <div class="typing-row" id="typing-row">
+      <div class="typing-row" id="typing-row" style="display:none;">
         <div class="typing-dots">
           <div class="td"></div><div class="td"></div><div class="td"></div>
         </div>
@@ -623,19 +579,19 @@
     list.scrollTop = list.scrollHeight;
   }
   function clearMessages() {
-    const list = document.getElementById('msg-list');
-    while (list.firstChild) list.removeChild(list.firstChild);
-    const div = document.createElement('div');
-    div.className = 'divider';
-    div.textContent = 'sm1.online — say hi to someone new';
-    list.appendChild(div);
-    const typing = document.createElement('div');
-    typing.className = 'typing-row';
-    typing.id = 'typing-row';
-    typing.style.display = 'none';
-    typing.innerHTML = '<div class="typing-dots"><div class="td"></div><div class="td"></div><div class="td"></div></div>';
-    list.appendChild(typing);
-  }
+  const list = document.getElementById('msg-list');
+  while (list.firstChild) list.removeChild(list.firstChild);
+  const div = document.createElement('div');
+  div.className = 'divider';
+  div.textContent = 'sm1.online — say hi to someone new';
+  list.appendChild(div);
+  const typing = document.createElement('div');
+  typing.className = 'typing-row';
+  typing.id = 'typing-row';
+  typing.style.display = 'none';
+  typing.innerHTML = '<div class="typing-dots"><div class="td"></div><div class="td"></div><div class="td"></div></div>';
+  list.appendChild(typing);
+}
   function hideTyping() {
     const row = document.getElementById('typing-row');
     if (row) row.style.display = 'none';
