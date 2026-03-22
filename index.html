@@ -113,7 +113,7 @@
     .bub.me { background: #2d8cf0; color: #fff; }
     .typing-row { display: none; justify-content: flex-start; margin-bottom: 14px; }
     .typing-dots { display: flex; gap: 5px; align-items: center; padding: 6px 2px; }
-    .td { width: 7px; height: 7px; border-radius: 50%; background: #333; animation: tda 1.4s infinite; }
+    .td { width: 7px; height: 7px; border-radius: 50%; background: #888; animation: tda 1.4s infinite; }
     .td:nth-child(2) { animation-delay: 0.2s; }
     .td:nth-child(3) { animation-delay: 0.4s; }
     @keyframes tda {
@@ -236,15 +236,15 @@
        just shrinks naturally — topbar stays top, composer stays bottom.
     ===================== */
     @media (max-width: 480px) {
-  html, body { height: 100%; overflow: hidden; background: #111; }
-  body { display: block; min-height: unset; }
+  html { height: 100%; overflow: hidden; background: #111; }
+  body { height: 100%; overflow: hidden; background: #111; display: block; min-height: unset; }
   .app { position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; max-width: 100%; min-height: unset; border-radius: 0; border: none; display: flex; flex-direction: column; overflow: hidden; }
   .screen { flex: 1; min-height: 0; overflow: hidden; display: none; flex-direction: column; }
   .screen.active { display: flex; }
   #screen-chat { display: none; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
   #screen-chat.active { display: flex; }
-  .topbar { flex-shrink: 0; flex-grow: 0; }
-  .msgs { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+  .topbar { flex-shrink: 0; flex-grow: 0; position: relative; z-index: 2; }
+  .msgs { flex: 1; min-height: 0; overflow-y: scroll; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
   .composer { flex-shrink: 0; flex-grow: 0; padding-bottom: max(20px, env(safe-area-inset-bottom)); }
   .wait-screen { flex: 1; min-height: 0; }
   .age-gate { flex: 1; min-height: 0; overflow-y: auto; }
@@ -412,7 +412,7 @@
       </div>
       <div class="tos-section">
         <div class="tos-h">abuse reporting</div>
-        <div class="tos-p">To report abuse email <b>abuse@sm1.online</b>. You can also use the report button inside any chat.</div>
+        <div class="tos-p">To report abuse email <b><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="b2d3d0c7c1d7f2c1df839cdddcdedbdcd7">[email&#160;protected]</a></b>. You can also use the report button inside any chat.</div>
       </div>
     </div>
   </div>
@@ -420,7 +420,7 @@
   <div class="toast" id="toast"></div>
 </div>
 
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
   /* SCREENS */
   function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
