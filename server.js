@@ -160,12 +160,4 @@ const heartbeat = setInterval(() => {
 }, 15000);
 
 wss.on('close', () => clearInterval(heartbeat));
-// Keep Railway from spinning down
-setInterval(() => {
-  const options = {
-    hostname: process.env.RAILWAY_PUBLIC_DOMAIN || 'sm1.online',
-    path: '/',
-    method: 'GET'
-  };
-  http.request(options, () => {}).on('error', () => {}).end();
-}, 4 * 60 * 1000); // ping every 4 minutes
+server.listen(PORT, () => console.log(`sm1 running on port ${PORT}`));
