@@ -43,7 +43,12 @@ function getWaiting() {
 }
 
 function tryMatch(ws) {
-  const partner = getWaiting();
+  let partner = getWaiting();
+  // skip same-IP matches, put them back and wait
+  while (partner && partner.clientIp === ws.clientIp) {
+    waitingQueue.push(partner);
+    partner = getWaiting();
+  }
   if (partner) {
     ws.partner = partner;
     partner.partner = ws;
