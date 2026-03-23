@@ -458,6 +458,8 @@
   }
   function enterApp() {
     if (!checks.chk1 || !checks.chk2) return;
+    intentionalClose = false;
+    reconnectAttempts = 0;
     showScreen('screen-wait');
     initWebSocket();
   }
@@ -481,6 +483,9 @@
   let connected = false;
   let leaveTimer = null;
   let typingThrottle = null;
+  let reconnectTimer = null;
+  let reconnectAttempts = 0;
+  let intentionalClose = false;
 
   document.addEventListener('visibilitychange', () => {
     if (!ws || ws.readyState !== WebSocket.OPEN) {
@@ -503,7 +508,10 @@
   function initWebSocket() {
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
     ws = new WebSocket(`${proto}://${location.host}`);
-    ws.onopen = () => {};
+    ws.onopen = () => {
+      reconnectAttempts = 0;
+      intentionalClose = false;
+    };
     ws.onmessage = (e) => {
       const msg = JSON.parse(e.data);
       if (msg.type === 'online_count') {
@@ -528,13 +536,26 @@
       }
       if (msg.type === 'stranger_left') {
         connected = false;
-        addSysMsg('stranger disconnected');
-        showScreen('screen-wait');
+        hideTyping();
+        addSysMsg('stranger disconnected — tap "next stranger" to find someone new');
       }
       if (msg.type === 'error') { showToast(msg.text); }
     };
-    ws.onclose = () => { connected = false; };
-    ws.onerror = () => showToast('connection error');
+    ws.onclose = () => {
+      connected = false;
+      if (!intentionalClose) {
+        // Railway spin-down or network drop — auto reconnect
+        const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 10000);
+        reconnectAttempts++;
+        addSysMsg('connection lost — reconnecting...');
+        reconnectTimer = setTimeout(() => {
+          initWebSocket();
+        }, delay);
+      }
+    };
+    ws.onerror = () => {
+      // onclose will fire after onerror, reconnect handled there
+    };
   }
 
   /* CHAT */
@@ -554,10 +575,14 @@
   }
   function skip() {
     connected = false;
+    intentionalClose = true;
+    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
     if (ws) ws.send(JSON.stringify({ type: 'skip' }));
     showScreen('screen-wait');
   }
   function cancelWait() {
+    intentionalClose = true;
+    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
     showScreen('screen-chat');
     clearMessages();
     addSysMsg('waiting for a stranger...');
@@ -638,17 +663,22 @@
 
   // Fix Android keyboard pushing content up
   if (window.visualViewport) {
+    let vvTimer = null;
     function onVVResize() {
-      const vv = window.visualViewport;
-      const app = document.querySelector('.app');
-      if (!app) return;
-      app.style.height = Math.round(vv.height) + 'px';
-      app.style.top = Math.round(vv.offsetTop) + 'px';
-      app.style.left = Math.round(vv.offsetLeft) + 'px';
-      app.style.width = Math.round(vv.width) + 'px';
-      // Scroll msgs to bottom when keyboard opens
-      const msgs = document.getElementById('msg-list');
-      if (msgs) msgs.scrollTop = msgs.scrollHeight;
+      if (vvTimer) return; // debounce — don't fire on every px
+      vvTimer = requestAnimationFrame(() => {
+        vvTimer = null;
+        const vv = window.visualViewport;
+        const app = document.querySelector('.app');
+        if (!app) return;
+        app.style.height = Math.round(vv.height) + 'px';
+        app.style.top = Math.round(vv.offsetTop) + 'px';
+        app.style.left = Math.round(vv.offsetLeft) + 'px';
+        app.style.width = Math.round(vv.width) + 'px';
+        // Scroll msgs to bottom when keyboard opens
+        const msgs = document.getElementById('msg-list');
+        if (msgs) msgs.scrollTop = msgs.scrollHeight;
+      });
     }
     window.visualViewport.addEventListener('resize', onVVResize);
     window.visualViewport.addEventListener('scroll', onVVResize);
